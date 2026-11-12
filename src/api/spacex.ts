@@ -59,6 +59,11 @@ const defaultBaseUrl = import.meta.env.DEV
     ? "/api/launch-library/2.3.0/"
     : "https://lldev.thespacedevs.com/2.3.0/";
 
+// The dev API streams large responses very slowly (and sometimes stalls), so
+// each page stays small (~10 launches ≈ 130 KB of JSON).
+const launchPageSize = 10;
+const requestTimeoutMs = 20_000;
+
 class SpaceX {
     private readonly baseUrl: string;
 
@@ -68,18 +73,42 @@ class SpaceX {
 
     private async request<T>(path: string, signal?: AbortSignal): Promise<T> {
         const url = /^https?:\/\//.test(path) ? path : `${this.baseUrl}${path}`;
-        const response = await fetch(url, {
-            signal,
-            headers: { Accept: "application/json" },
-        });
+        const controller = new AbortController();
+        let timedOut = false;
 
-        if (!response.ok) {
-            throw new Error(
-                `Launch Library API request failed (${response.status} ${response.statusText}): ${url}`,
-            );
+        const abort = () => controller.abort(signal?.reason);
+        signal?.addEventListener("abort", abort, { once: true });
+
+        const timeoutId = setTimeout(() => {
+            timedOut = true;
+            controller.abort();
+        }, requestTimeoutMs);
+
+        try {
+            const response = await fetch(url, {
+                signal: controller.signal,
+                headers: { Accept: "application/json" },
+            });
+
+            if (!response.ok) {
+                throw new Error(
+                    `Launch Library API request failed (${response.status} ${response.statusText}): ${url}`,
+                );
+            }
+
+            return (await response.json()) as T;
+        } catch (error) {
+            if (timedOut) {
+                throw new Error(
+                    `Launch Library API request timed out after ${requestTimeoutMs} ms: ${url}`,
+                );
+            }
+
+            throw error;
+        } finally {
+            clearTimeout(timeoutId);
+            signal?.removeEventListener("abort", abort);
         }
-
-        return (await response.json()) as T;
     }
 
     private async requestAll<T>(path: string, signal?: AbortSignal): Promise<T[]> {
@@ -104,12 +133,11 @@ class SpaceX {
         return items;
     }
 
-    async launches(signal?: AbortSignal): Promise<Launch[]> {
-        const page = await this.request<PaginatedResponse<Launch>>(
-            "launches/?limit=100",
+    async launches(offset = 0, signal?: AbortSignal): Promise<PaginatedResponse<Launch>> {
+        return this.request<PaginatedResponse<Launch>>(
+            `launches/?limit=${launchPageSize}&offset=${offset}`,
             signal,
         );
-        return page.results;
     }
 
     launchpads(signal?: AbortSignal): Promise<Launchpad[]> {

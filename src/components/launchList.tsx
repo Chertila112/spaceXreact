@@ -4,6 +4,9 @@ interface LaunchListProps {
     launches: Launch[];
     isLoading: boolean;
     error: Error | null;
+    hasNextPage: boolean;
+    isFetchingNextPage: boolean;
+    onLoadMore: () => void;
     onHoverLaunchpad: (launchpadId: number | null) => void;
 }
 
@@ -24,7 +27,15 @@ function getVehicle(launch: Launch): string | null {
     return launch.rocket?.configuration?.full_name ?? launch.rocket?.configuration?.name ?? null;
 }
 
-function LaunchList({ launches, isLoading, error, onHoverLaunchpad }: LaunchListProps) {
+function LaunchList({
+    launches,
+    isLoading,
+    error,
+    hasNextPage,
+    isFetchingNextPage,
+    onLoadMore,
+    onHoverLaunchpad,
+}: LaunchListProps) {
     return (
         <aside className="aside" id="launchesContainer">
             <h3>Launches</h3>
@@ -35,7 +46,7 @@ function LaunchList({ launches, isLoading, error, onHoverLaunchpad }: LaunchList
                         Failed to load launches: {error.message}
                     </p>
                 )}
-                {!isLoading && !error && (
+                {launches.length > 0 && (
                     <ul className="launchList">
                         {launches.map((launch) => (
                             <li
@@ -55,6 +66,16 @@ function LaunchList({ launches, isLoading, error, onHoverLaunchpad }: LaunchList
                             </li>
                         ))}
                     </ul>
+                )}
+                {!isLoading && hasNextPage && (
+                    <button
+                        type="button"
+                        className="loadMore"
+                        onClick={onLoadMore}
+                        disabled={isFetchingNextPage}
+                    >
+                        {isFetchingNextPage ? "Loading…" : "Load more launches"}
+                    </button>
                 )}
             </div>
         </aside>

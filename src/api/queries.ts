@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { spacexApi } from "./spacex";
 
 const spaceXKeys = {
@@ -8,9 +8,14 @@ const spaceXKeys = {
 };
 
 function useLaunches() {
-    return useQuery({
+    return useInfiniteQuery({
         queryKey: spaceXKeys.launches(),
-        queryFn: ({ signal }) => spacexApi.launches(signal),
+        queryFn: ({ signal, pageParam }) => spacexApi.launches(pageParam, signal),
+        initialPageParam: 0,
+        getNextPageParam: (lastPage, _allPages, lastPageParam) =>
+            lastPage.next && lastPage.results.length > 0
+                ? lastPageParam + lastPage.results.length
+                : undefined,
         staleTime: 5 * 60 * 1000,
     });
 }

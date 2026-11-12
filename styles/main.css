@@ -98,3 +98,27 @@ body {
     cursor: pointer;
     transition: fill 120ms ease, opacity 120ms ease, stroke-width 120ms ease;
 }
+
+.loadMore {
+    display: block;
+    width: calc(100% - 8px);
+    margin: 0 4px 4px;
+    padding: 8px 10px;
+    border: 1px solid #cfd7e3;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #1f6feb;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.loadMore:hover:not(:disabled) {
+    background: #e5eeff;
+}
+
+.loadMore:disabled {
+    color: #5a6678;
+    cursor: default;
+}

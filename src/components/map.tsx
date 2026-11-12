@@ -2,14 +2,14 @@ import * as d3 from "d3";
 import type { FeatureCollection } from "geojson";
 import { useEffect, useRef } from "react";
 import geo from "../geo.json";
-import type { Launchpad } from "../api/spacex";
+import type { LaunchPadSummary } from "../api/spacex";
 
 interface MapProps {
-    launchpads: Launchpad[];
+    launchpads: LaunchPadSummary[];
     highlightedLaunchpadId: number | null;
 }
 
-type PadWithCoordinates = Launchpad & {
+type PadWithCoordinates = LaunchPadSummary & {
     latitude: number;
     longitude: number;
 };
@@ -20,7 +20,7 @@ const margin = { top: 20, right: 20, bottom: 20, left: 20 };
 
 const countries = geo as unknown as FeatureCollection;
 
-function hasCoordinates(pad: Launchpad): pad is PadWithCoordinates {
+function hasCoordinates(pad: LaunchPadSummary): pad is PadWithCoordinates {
     return (
         typeof pad.latitude === "number" &&
         Number.isFinite(pad.latitude) &&
