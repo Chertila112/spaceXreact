@@ -55,12 +55,22 @@ export interface Launchpad {
     country: { id: number; name: string; alpha_2_code: string } | null;
 }
 
-const defaultBaseUrl = import.meta.env.DEV
-    ? "/api/launch-library/2.3.0/"
-    : "https://lldev.thespacedevs.com/2.3.0/";
+export class RequestTimeoutError extends Error {
+    readonly name = "RequestTimeoutError";
+    constructor(readonly url: string, readonly timeoutMs: number, options?: ErrorOptions) {
+        super(`Launch Library API request timed out after ${timeoutMs} ms: ${url}`, options);
+    }
+}
 
-// The dev API streams large responses very slowly (and sometimes stalls), so
-// each page stays small (~10 launches ≈ 130 KB of JSON).
+export class HttpError extends Error {
+    readonly name = "HttpError";
+    constructor(readonly status: number, readonly url: string, statusText: string) {
+        super(`Launch Library API request failed (${status} ${statusText}): ${url}`);
+    }
+}
+
+const defaultBaseUrl = "https://lldev.thespacedevs.com/2.3.0/";
+
 const launchPageSize = 10;
 const requestTimeoutMs = 20_000;
 
@@ -71,46 +81,33 @@ class SpaceX {
         this.baseUrl = baseUrl;
     }
 
-    private async request<T>(path: string, signal?: AbortSignal): Promise<T> {
-        const url = /^https?:\/\//.test(path) ? path : `${this.baseUrl}${path}`;
-        const controller = new AbortController();
-        let timedOut = false;
 
-        const abort = () => controller.abort(signal?.reason);
-        signal?.addEventListener("abort", abort, { once: true });
+private async request<T>(path: string, signal?: AbortSignal): Promise<T> {
+    const url = /^https?:\/\//.test(path) ? path : `${this.baseUrl}${path}`;
 
-        const timeoutId = setTimeout(() => {
-            timedOut = true;
-            controller.abort();
-        }, requestTimeoutMs);
+    const timeoutSignal = AbortSignal.timeout(requestTimeoutMs);
+    const combined = signal
+        ? AbortSignal.any([signal, timeoutSignal])
+        : timeoutSignal;
 
-        try {
-            const response = await fetch(url, {
-                signal: controller.signal,
-                headers: { Accept: "application/json" },
-            });
+    try {
+        const response = await fetch(url, {
+            signal: combined,
+            headers: { Accept: "application/json" },
+        });
 
-            if (!response.ok) {
-                throw new Error(
-                    `Launch Library API request failed (${response.status} ${response.statusText}): ${url}`,
-                );
-            }
-
-            return (await response.json()) as T;
-        } catch (error) {
-            if (timedOut) {
-                throw new Error(
-                    `Launch Library API request timed out after ${requestTimeoutMs} ms: ${url}`,
-                );
-            }
-
-            throw error;
-        } finally {
-            clearTimeout(timeoutId);
-            signal?.removeEventListener("abort", abort);
+        if (!response.ok) {
+            throw new HttpError(response.status, url, response.statusText);
         }
-    }
 
+        return (await response.json()) as T;
+    } catch (error) {
+        if (combined.aborted && combined.reason === timeoutSignal.reason) {
+            throw new RequestTimeoutError(url, requestTimeoutMs, { cause: error });
+        }
+        throw error;
+    }
+}
     private async requestAll<T>(path: string, signal?: AbortSignal): Promise<T[]> {
         const items: T[] = [];
         const limit = 100;

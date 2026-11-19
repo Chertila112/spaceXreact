@@ -1,0 +1,19 @@
+{
+  "mcp": {
+    "servers": {
+      "chrome-devtools": {
+        "type": "local",
+        "command": [
+          "npx",
+          "-y",
+          "chrome-devtools-mcp@latest",
+          "--headless",
+          "--isolated",
+          "--no-usage-statistics",
+          "--executablePath",
+          "/home/kikbutt/.cache/ms-playwright/chromium-1254/chrome-linux64/chrome"
+        ]
+      }
+    }
+  }
+}

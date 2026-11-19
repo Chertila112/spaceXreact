@@ -15,8 +15,6 @@ function App() {
         [launchesQuery.data],
     );
 
-    // Launches already embed their pad (with coordinates), so there is no need
-    // to download the whole /pads/ collection just to draw circles.
     const launchpads = useMemo(() => {
         const pads = new Map<number, LaunchPadSummary>();
 

@@ -29,7 +29,6 @@ body {
     overflow: hidden;
     overflow-y: auto;
     border: 1px solid #cfd7e3;
-    border-radius: 8px;
     background: #fbfcfe;
 }
 
@@ -76,6 +75,7 @@ body {
 }
 
 .mapContainer {
+    margin-top: 30px;
     flex: 1 1 auto;
     min-width: 0;
     border: 1px solid #cfd7e3;
